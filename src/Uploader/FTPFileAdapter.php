@@ -14,12 +14,13 @@ class FTPFileAdapter implements UploaderAdopterInterface {
     }
 
     public function upload(\SplFileInfo $file): string {
+        $destination = getenv('ftp_destination');
        $d= $this->uploader->uploadFile($file,
-        '',
-       '',
-       ' string $password',
-       '/');
-       if($d) return $file->getFilename();
+        getenv('ftp_hostname'),
+        getenv('ftp_username'),
+        getenv('ftp_password'),
+        $destination);
+       if($d) return "ftp://uploads.ipedis.com/{$destination}/{$file->getFilename()}";
     }
 
     public function support(string $method): bool  {

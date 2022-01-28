@@ -21,7 +21,7 @@ class AWSUploaderAdapter implements UploaderAdopterInterface {
     }
 
     public function upload(\SplFileInfo $file): string {
-        $file = $this->uploader->send($file , '');
+        $file = $this->uploader->send($file , getenv('s3_bucketname'));
         return $file->getPublicUrl();
     }
 

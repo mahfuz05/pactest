@@ -2,8 +2,19 @@
 
 namespace App;
 
+use App\Converter\PDFToImageConverter;
+use App\Uploader\AWSUploaderAdapter;
+use App\Uploader\DropboxUploaderAdapter;
+use App\Uploader\FileUploader;
+use App\Uploader\FTPFileAdapter;
+use DropboxStub\DropboxClient;
+use FTPStub\FTPUploader;
+use ImageConverter;
+use PDFStub\Client as PDFStubClient;
+use S3Stub\Client;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Dotenv\Dotenv;
 
 /**
  * You should implement this class however you want.
@@ -22,7 +33,8 @@ class Application
    */
   public function __construct(array $config)
   {
-    
+    $dotenv = new Dotenv();
+    $dotenv->load(__DIR__.'/../.env');
   }
 
   /**
@@ -48,16 +60,31 @@ class Application
       
       $data = $request->request->all();
       
+      $dropbox = new DropboxClient(getenv('dropbox_access_key'), getenv('dropbox_secret_token'), getenv('dropbox_container'));
+      $ftp = new FTPUploader();
+      $s3 = new Client(getenv('s3_access_key_id'), getenv('s3_secret_access_key'));
+
+      $fileUploader = new FileUploader([
+        new DropboxUploaderAdapter($dropbox)  ,
+        new FTPFileAdapter($ftp) ,
+        new AWSUploaderAdapter($s3) 
+      ]);
+
+      $pdfFile = new \SplFileInfo($file);
+      $response['url'] = $fileUploader->uploadFile($data['upload'],  $pdfFile);
 
 
-      var_dump($data, $file->getClientMimeType(), new \SplFileInfo($file));
+      $pdfClient = new PDFStubClient(getenv('converter_app_id'), getenv('converter_access_token'));
+      $pdfConverter = new PDFToImageConverter($pdfClient);
 
-      //$response->setContent('<html><body><h1>Hello world!</h1></body></html>');
+      $image = new ImageConverter([$pdfConverter]);
+      foreach($data['formats'] as $format) {
+        $data['formats'][$format] = $image->convertFile( $pdfFile, $format);
+      }
+      
       $response->setStatusCode(Response::HTTP_OK);
-      $response->setContent(json_encode([
-        'data' => 123,
-        ]));
-        $response->headers->set('Content-Type', 'application/json');
+      $response->setContent(json_encode($response));
+      $response->headers->set('Content-Type', 'application/json');
        
         return $response;
       

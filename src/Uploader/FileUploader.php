@@ -21,7 +21,7 @@ class FileUploader
         $this->uploaders = $uploaders;
     }
 
-    public function calculate(string $uplodingMethod, SplFileInfo $file): string
+    public function uploadFile(string $uplodingMethod, SplFileInfo $file): string
     {
         foreach ($this->uploaders as $uploader) {
             if ($uploader->support($uplodingMethod)) {

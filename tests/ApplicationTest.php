@@ -61,8 +61,6 @@ class ApplicationTest extends TestCase
 
         $response = $app->handleRequest($request);
 
-        die( $response);
-        die;
         $this->assertInstanceOf(Response::class, $response, 'Application should always return Response object');
 
         $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode(), 'Requests with unsupported should return HTTP Code 400 in the response.');
