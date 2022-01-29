@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
+namespace App\Converter;
 
 class ImageConverter
 {
-/**
+    /**
      * @var Con[]
      */
     private array $converters;
@@ -16,7 +19,7 @@ class ImageConverter
         $this->converters = $converters;
     }
 
-    public function convertFile(SplFileInfo $file, string $format ): string
+    public function convertFile(\SplFileInfo $file, string $format): string
     {
         foreach ($this->converters as $converter) {
             if ($converter->support($format)) {
@@ -24,6 +27,6 @@ class ImageConverter
             }
         }
 
-        throw new InvalidArgumentException('Invalid Type Selected');
+        throw new \InvalidArgumentException('Invalid Type Selected');
     }
 }

@@ -2,14 +2,16 @@
 
 namespace App;
 
+use App\Converter\ImageConverter;
 use App\Converter\PDFToImageConverter;
 use App\Uploader\AWSUploaderAdapter;
 use App\Uploader\DropboxUploaderAdapter;
 use App\Uploader\FileUploader;
 use App\Uploader\FTPFileAdapter;
 use DropboxStub\DropboxClient;
+use Exception;
 use FTPStub\FTPUploader;
-use ImageConverter;
+
 use PDFStub\Client as PDFStubClient;
 use S3Stub\Client;
 use Symfony\Component\HttpFoundation\Request;
@@ -34,7 +36,7 @@ class Application
   public function __construct(array $config)
   {
     $dotenv = new Dotenv();
-    $dotenv->load(__DIR__.'/../.env');
+    $dotenv->load(__DIR__ . '/../.env');
   }
 
   /**
@@ -51,49 +53,69 @@ class Application
   {
     $path = $request->getPathInfo(); // the URI path being requested
     $response = new Response();
-    if (in_array($path, ['', '/']) && $request->getMethod() === 'POST' ) {
+    $response->setCharset('UTF-8');
+    $responseData = [];
+    if (in_array($path, ['', '/']) && $request->getMethod() === 'POST') {
       $file = $request->files->get('file');
-      if(!($file  && in_array($file->getClientMimeType(), ['application/pdf', 'application/x-pdf']))) {
+
+      if (!($file  && in_array($file->getClientMimeType(), ['application/pdf', 'application/x-pdf', 'application/octet-stream']) && $file->getClientOriginalExtension() === 'pdf')) {
         $response->setStatusCode(Response::HTTP_BAD_REQUEST);
         return $response;
       }
-      
+
+
       $data = $request->request->all();
-      
-      $dropbox = new DropboxClient(getenv('dropbox_access_key'), getenv('dropbox_secret_token'), getenv('dropbox_container'));
-      $ftp = new FTPUploader();
-      $s3 = new Client(getenv('s3_access_key_id'), getenv('s3_secret_access_key'));
 
-      $fileUploader = new FileUploader([
-        new DropboxUploaderAdapter($dropbox)  ,
-        new FTPFileAdapter($ftp) ,
-        new AWSUploaderAdapter($s3) 
-      ]);
-
-      $pdfFile = new \SplFileInfo($file);
-      $response['url'] = $fileUploader->uploadFile($data['upload'],  $pdfFile);
-
-
-      $pdfClient = new PDFStubClient(getenv('converter_app_id'), getenv('converter_access_token'));
-      $pdfConverter = new PDFToImageConverter($pdfClient);
-
-      $image = new ImageConverter([$pdfConverter]);
-      foreach($data['formats'] as $format) {
-        $data['formats'][$format] = $image->convertFile( $pdfFile, $format);
-      }
-      
-      $response->setStatusCode(Response::HTTP_OK);
-      $response->setContent(json_encode($response));
-      $response->headers->set('Content-Type', 'application/json');
-       
+      if (!isset($data['upload'])) {
+        $response->setStatusCode(Response::HTTP_BAD_REQUEST);
         return $response;
-      
+      }
+
+
+
+      try {
+        $dropbox = new DropboxClient($_ENV['dropbox_access_key'], $_ENV['dropbox_secret_token'], $_ENV['dropbox_container']);
+        $ftp = new FTPUploader();
+        $s3 = new Client($_ENV['s3_access_key_id'], $_ENV['s3_secret_access_key']);
+
+        $fileUploader = new FileUploader([
+          new DropboxUploaderAdapter($dropbox),
+          new FTPFileAdapter($ftp),
+          new AWSUploaderAdapter($s3)
+        ]);
+
+        $pdfFile = new \SplFileInfo($file);
+
+
+
+        $pdfClient = new PDFStubClient($_ENV['converter_app_id'], $_ENV['converter_access_token']);
+        $pdfConverter = new PDFToImageConverter($pdfClient);
+
+        $image = new ImageConverter([$pdfConverter]);
+        $responseData['url'] = $fileUploader->uploadFile($data['upload'],  $pdfFile);
+
+        foreach ($data['formats'] as $format) {
+          $url =  $image->convertFile($pdfFile, $format);
+          $newPdfFile = new \SplFileInfo($url);
+          $responseData['formats'][$format] = $fileUploader->uploadFile($data['upload'],  $newPdfFile);
+        }
+
+
+        $response->setStatusCode(Response::HTTP_OK);
+        $response->setContent(json_encode($responseData));
+      } catch (Exception $e) {
+        $response->setStatusCode(Response::HTTP_BAD_REQUEST);
+      }
+
+
+      $response->headers->set('Content-Type', 'application/json');
+
+      return $response;
+
       // sets a HTTP response header
-      
+
     }
     $response->setStatusCode(Response::HTTP_METHOD_NOT_ALLOWED);
     return $response;
-    
-   
   }
 }

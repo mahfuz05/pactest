@@ -41,6 +41,6 @@ class Client
             throw new \InvalidArgumentException('Trying to encode to an unsupported image format!');
         }
 
-        return sprintf('http://pdf-convertor.com/results/%s/%s.%s', $this->appId, str_replace('.', '_', $file->getFilename()), $format);
+        return sprintf('http://pdf-convertor.com/results/%s/%s.%s', $this->appId, str_replace('.', '_', $file->getBasename('.'.$file->getExtension())), $format);
     }
 }

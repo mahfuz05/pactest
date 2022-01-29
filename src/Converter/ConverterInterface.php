@@ -1,11 +1,13 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Converter;
 
-interface ConverterInterface {
+interface ConverterInterface
+{
 
     public function convertFile(\SplFileInfo $file, string $format): string;
 
-    public function support(string $format) : bool ;
+    public function support(string $format): bool;
 }

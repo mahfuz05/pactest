@@ -185,7 +185,7 @@ class ApplicationTest extends TestCase
 
         $data = $this->validateResponse($response, true);
 
-        $this->assertContains('http://ipedis.dropbox.com/pdf-uploads/resume.pdf', $data['url']);
+        $this->assertStringContainsString('http://ipedis.dropbox.com/pdf-uploads/resume.pdf', $data['url']);
 
         $this->assertEquals('http://ipedis.dropbox.com/pdf-uploads/resume.webp', $data['formats']['webp']);
         $this->assertEquals('http://ipedis.dropbox.com/pdf-uploads/resume.jpg', $data['formats']['jpg']);
